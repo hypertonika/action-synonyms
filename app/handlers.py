@@ -23,7 +23,7 @@ import re
 ADMINS = [549021481]
 
 # MongoDB configuration
-MONGO_URI = "mongodb+srv://tbaizhanov4:hn2DHosmko1XFIMP@cluster0.z3jzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URI = os.environ.get("MONGO_URI")
 DB_NAME = "bot_database"
 
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
@@ -395,22 +395,22 @@ async def check_quiz_in_progress(state: FSMContext):
 
 def build_general_quiz_keyboard():
     keyboard = InlineKeyboardBuilder()
-    
+
     # --- Строка 1: 1..6
     keyboard.row(
-        InlineKeyboardButton(text="1",  callback_data="quiz_1"),
-        InlineKeyboardButton(text="2",  callback_data="quiz_2"),
-        InlineKeyboardButton(text="3",  callback_data="quiz_3"),
-        InlineKeyboardButton(text="4",  callback_data="quiz_4"),
-        InlineKeyboardButton(text="5",  callback_data="quiz_5"),
-        InlineKeyboardButton(text="6",  callback_data="quiz_6"),
+        InlineKeyboardButton(text="1", callback_data="quiz_1"),
+        InlineKeyboardButton(text="2", callback_data="quiz_2"),
+        InlineKeyboardButton(text="3", callback_data="quiz_3"),
+        InlineKeyboardButton(text="4", callback_data="quiz_4"),
+        InlineKeyboardButton(text="5", callback_data="quiz_5"),
+        InlineKeyboardButton(text="6", callback_data="quiz_6"),
     )
 
     # --- Строка 2: 7..12
     keyboard.row(
-        InlineKeyboardButton(text="7",  callback_data="quiz_7"),
-        InlineKeyboardButton(text="8",  callback_data="quiz_8"),
-        InlineKeyboardButton(text="9",  callback_data="quiz_9"),
+        InlineKeyboardButton(text="7", callback_data="quiz_7"),
+        InlineKeyboardButton(text="8", callback_data="quiz_8"),
+        InlineKeyboardButton(text="9", callback_data="quiz_9"),
         InlineKeyboardButton(text="10", callback_data="quiz_10"),
         InlineKeyboardButton(text="11", callback_data="quiz_11"),
         InlineKeyboardButton(text="12", callback_data="quiz_12"),
@@ -436,7 +436,7 @@ def build_general_quiz_keyboard():
     keyboard.row(
         InlineKeyboardButton(
             text="Перейти к тематическим тестам (На английском) ➡️",
-            callback_data="switch_to_mining_quizzes"
+            callback_data="switch_to_mining_quizzes",
         )
     )
 
@@ -446,16 +446,14 @@ def build_general_quiz_keyboard():
 @router.message(Command("start_quiz"))
 async def choose_quiz(message: Message, state: FSMContext):
     if await check_quiz_in_progress(state):
-        await message.answer("❌ Вы не можете начать новый квиз, пока не завершите текущий.")
+        await message.answer(
+            "❌ Вы не можете начать новый квиз, пока не завершите текущий."
+        )
         return
 
     # Вызываем функцию, возвращающую готовую клавиатуру
     keyboard = build_general_quiz_keyboard()
-    await message.answer(
-        "Выберите раздел:",
-        reply_markup=keyboard.as_markup()
-    )
-
+    await message.answer("Выберите раздел:", reply_markup=keyboard.as_markup())
 
 
 @router.callback_query(lambda c: c.data == "switch_to_mining_quizzes")
@@ -496,9 +494,9 @@ async def switch_to_general_quizzes(callback_query: CallbackQuery):
     # Повторяем ту же функцию, чтобы раскладка была идентичной
     keyboard = build_general_quiz_keyboard()
     await callback_query.message.edit_text(
-        "Выберите раздел:",
-        reply_markup=keyboard.as_markup()
+        "Выберите раздел:", reply_markup=keyboard.as_markup()
     )
+
 
 # Обработчик для запуска тематического квиза
 @router.callback_query(lambda c: c.data and c.data.startswith("mining_quiz::"))

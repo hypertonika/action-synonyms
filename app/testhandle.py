@@ -370,7 +370,7 @@ async def start_flashcards(message: Message, state: FSMContext):
         except Exception:
             pass
 
-    docs = await dictionary_col.find({}).to_list(length=None)
+    docs = await all_words_col.find({}).to_list(length=None)
     if not docs:
         await message.answer(
             "⚠️ Словарь пуст. Добавьте слова с помощью команды `/add_word`."
@@ -382,7 +382,7 @@ async def start_flashcards(message: Message, state: FSMContext):
     current_index = 0
     await state.update_data(words=words, current_index=current_index)
 
-    doc = await dictionary_col.find_one({"word": words[current_index]})
+    doc = await all_words_col.find_one({"word": words[current_index]})
     response = generate_flashcard(
         doc["word"], doc.get("synonyms", []), doc.get("ru", ""), doc.get("kz", "")
     )
@@ -402,7 +402,7 @@ async def next_word(callback_query: CallbackQuery, state: FSMContext):
     current_index = (current_index + 1) % len(words)
     await state.update_data(current_index=current_index)
 
-    doc = await dictionary_col.find_one({"word": words[current_index]})
+    doc = await all_words_col.find_one({"word": words[current_index]})
     response = generate_flashcard(
         doc["word"], doc.get("synonyms", []), doc.get("ru", ""), doc.get("kz", "")
     )
@@ -424,7 +424,7 @@ async def previous_word(callback_query: CallbackQuery, state: FSMContext):
     current_index = (current_index - 1) % len(words)
     await state.update_data(current_index=current_index)
 
-    doc = await dictionary_col.find_one({"word": words[current_index]})
+    doc = await all_words_col.find_one({"word": words[current_index]})
     response = generate_flashcard(
         doc["word"], doc.get("synonyms", []), doc.get("ru", ""), doc.get("kz", "")
     )

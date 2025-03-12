@@ -31,8 +31,7 @@ db = client[DB_NAME]
 dictionary_col = db["dictionary"]
 quiz_col = db["quiz_data"]
 mining_words_col = db["mining_words"]
-mining_quizzes_col = db["mining_quizzes"]  # Новая коллекция для тематических тестов
-
+mining_quizzes_col = db["mining_quizzes"]  
 router = Router()
 
 

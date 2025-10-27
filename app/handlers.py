@@ -20,8 +20,6 @@ from fuzzywuzzy import process
 import random
 import re
 
-ADMINS = [549021481]
-
 # MongoDB configuration
 MONGO_URI = os.environ.get("MONGO_URI")
 DB_NAME = "bot_database"
@@ -31,7 +29,9 @@ db = client[DB_NAME]
 dictionary_col = db["dictionary"]
 quiz_col = db["quiz_data"]
 mining_words_col = db["mining_words"]
-mining_quizzes_col = db["mining_quizzes"]  
+mining_quizzes_col = db["mining_quizzes"]
+all_words_col = db["all_words"]
+admins_col = db["admins"]
 router = Router()
 
 
@@ -66,22 +66,28 @@ async def cmd_help(message: Message):
         "3. Используйте `/random_word`, чтобы получить случайное слово.\n"
         "4. Используйте `/flashcards`, чтобы начать обучение по карточкам.\n"
         "5. Используйте `/start_quiz`, чтобы проверить свои знания с помощью викторины.\n"
-        "6. Администраторы могут добавлять новые слова с помощью команды `/add_word`.\n\n"
+        "6. Используйте `/reading`, чтобы открыть раздел чтения: словарь по теме, текст, обсуждение и квиз.\n"
+        "   — Внутри раздела навигируйте кнопками *Назад* и *Далее*;\n"
+        "   — В заданиях отправляйте ответы прямо сообщением (для Task 1/2 есть инструкции в тексте);\n"
+        "   — Результаты квиза показываются во всплывающем окне.\n"
+        "7. Администраторы могут добавлять новые слова с помощью команды `/add_word`.\n\n"
         "💡 В любой момент введите 'отмена', чтобы прервать текущую операцию.\n\n"
         "👨‍🏫 *Команды:*\n"
-        "🔹 `/start` - начать работу с ботом\n"
-        "🔹 `/list` - список слов по буквам\n"
-        "🔹 `/help` - описание функциональности\n"
-        "🔹 `/add_word` - добавить слово (только для админов)\n"
-        "🔹 `/random_word` - получить случайное слово\n"
-        "🔹 `/flashcards` - режим обучения по карточкам\n"
-        "🔹 `/start_quiz` - начать викторину",
+        "🔹 `/start` — начать работу с ботом\n"
+        "🔹 `/list` — список слов по буквам\n"
+        "🔹 `/help` — описание функциональности\n"
+        "🔹 `/add_word` — добавить слово (только для админов)\n"
+        "🔹 `/random_word` — получить случайное слово\n"
+        "🔹 `/flashcards` — режим обучения по карточкам\n"
+        "🔹 `/start_quiz` — начать викторину\n"
+        "🔹 `/reading` — открыть уроки чтения (вокабуляр, текст, задания и квиз)",
         parse_mode="Markdown",
     )
 
 
 # FSM для добавления нового слова
 class AddWord(StatesGroup):
+    waiting_for_category = State()  
     waiting_for_word = State()
     waiting_for_synonyms = State()
     waiting_for_ru_translation = State()
@@ -103,27 +109,39 @@ def cancel_keyboard():
 
 
 @router.message(Command("add_word"))
-async def start_add_word(message: types.Message, state: FSMContext):
-    if message.from_user.id not in ADMINS:
+async def start_add_word(message: Message, state: FSMContext):
+    # Проверяем права администратора через коллекцию admins_col
+    admin_doc = await admins_col.find_one({"admin_id": message.from_user.id})
+    if not admin_doc:
         await message.answer("У вас нет прав для добавления новых слов.")
         return
 
-    await message.answer("Введите слово на английском:", reply_markup=cancel_keyboard())
+    # Запрашиваем выбор категории
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Action Synonyms", callback_data="cat_dictionary")],
+        [InlineKeyboardButton(text="Technical Mining Thesaurus", callback_data="cat_mining")]
+    ])
+    await message.answer("Выберите категорию для добавления слова:", reply_markup=keyboard)
+    await state.set_state(AddWord.waiting_for_category)
+
+
+@router.callback_query(lambda c: c.data in ["cat_dictionary", "cat_mining"])
+async def choose_category(callback_query: CallbackQuery, state: FSMContext):
+    category = callback_query.data  # "cat_dictionary" или "cat_mining"
+    await state.update_data(category=category)
+    await callback_query.message.edit_text("Введите слово на английском:", reply_markup=cancel_keyboard())
     await state.set_state(AddWord.waiting_for_word)
 
 
 @router.message(AddWord.waiting_for_word)
-async def get_english_word(message: types.Message, state: FSMContext):
-    # Приводим слово к заглавной букве для единообразия
+async def get_english_word(message: Message, state: FSMContext):
     await state.update_data(word=message.text.strip().capitalize())
-    await message.answer(
-        "Введите синонимы через запятую:", reply_markup=cancel_keyboard()
-    )
+    await message.answer("Введите синонимы через запятую:", reply_markup=cancel_keyboard())
     await state.set_state(AddWord.waiting_for_synonyms)
 
 
 @router.message(AddWord.waiting_for_synonyms)
-async def get_synonyms(message: types.Message, state: FSMContext):
+async def get_synonyms(message: Message, state: FSMContext):
     synonyms = [s.strip() for s in message.text.split(",")]
     await state.update_data(synonyms=synonyms)
     await message.answer("Введите русский перевод:", reply_markup=cancel_keyboard())
@@ -131,16 +149,15 @@ async def get_synonyms(message: types.Message, state: FSMContext):
 
 
 @router.message(AddWord.waiting_for_ru_translation)
-async def get_russian_translation(message: types.Message, state: FSMContext):
+async def get_russian_translation(message: Message, state: FSMContext):
     await state.update_data(ru=message.text.strip())
     await message.answer("Введите казахский перевод:", reply_markup=cancel_keyboard())
     await state.set_state(AddWord.waiting_for_kz_translation)
 
 
 @router.message(AddWord.waiting_for_kz_translation)
-async def get_kazakh_translation(message: types.Message, state: FSMContext):
+async def get_kazakh_translation(message: Message, state: FSMContext):
     await state.update_data(kz=message.text.strip())
-
     data = await state.get_data()
     word_info = (
         f"🔹 **Слово**: {data['word']}\n"
@@ -148,7 +165,6 @@ async def get_kazakh_translation(message: types.Message, state: FSMContext):
         f"🔹 **Русский перевод**: {data['ru']}\n"
         f"🔹 **Казахский перевод**: {data['kz']}"
     )
-
     await message.answer(
         f"Проверьте данные перед добавлением:\n\n{word_info}",
         parse_mode="Markdown",
@@ -166,48 +182,90 @@ async def cancel_addition(callback_query: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "confirm_addition")
 async def confirm_addition(callback_query: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    # Добавляем или обновляем слово в MongoDB с upsert-операцией
-    await dictionary_col.update_one(
-        {"word": data["word"]},
-        {"$set": {"synonyms": data["synonyms"], "ru": data["ru"], "kz": data["kz"]}},
+    word = data["word"]
+    synonyms = data["synonyms"]
+    ru = data["ru"]
+    kz = data["kz"]
+    category = data.get("category")
+
+    # Добавляем в соответствующую коллекцию по категории
+    if category == "cat_dictionary":
+        await dictionary_col.update_one(
+            {"word": word},
+            {"$set": {"synonyms": synonyms, "ru": ru, "kz": kz}},
+            upsert=True,
+        )
+    elif category == "cat_mining":
+        await mining_words_col.update_one(
+            {"word": word},
+            {"$set": {"synonyms": synonyms, "ru": ru, "kz": kz}},
+            upsert=True,
+        )
+
+    # Обязательно добавляем слово в коллекцию all_words
+    await all_words_col.update_one(
+        {"word": word},
+        {"$set": {"synonyms": synonyms, "ru": ru, "kz": kz}},
         upsert=True,
     )
-    await callback_query.message.edit_text("✅ Слово успешно добавлено в словарь!")
+
+    await callback_query.message.edit_text("✅ Слово успешно добавлено!")
     await state.clear()
 
 
+# ===== Изменения для команды /list =====
 @router.message(Command("list"))
 async def cmd_list(message: Message):
-    keyboard = await generate_alphabet_keyboard()
-    await message.answer(
-        "📚 Выберите Категорию, чтобы увидеть список слов:", reply_markup=keyboard
-    )
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Action Synonyms", callback_data="list_dictionary")
+    builder.button(text="Technical Mining Thesaurus", callback_data="list_mining")
+    keyboard = builder.as_markup()
+    await message.answer("📚 Выберите категорию:", reply_markup=keyboard)
 
 
-async def generate_alphabet_keyboard():
+def generate_alphabet_keyboard_for_collection(prefix: str):
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     builder = InlineKeyboardBuilder()
     for letter in alphabet:
-        builder.button(text=letter, callback_data=f"letter_{letter}")
+        builder.button(text=letter, callback_data=f"{prefix}{letter}")
     builder.adjust(6)
-    # Добавляем отдельный ряд для категории mining words
-    builder.row()
-    builder.button(text="Mining words", callback_data="mining_words")
     return builder.as_markup()
 
 
-@router.callback_query(lambda c: c.data == "mining_words")
-async def handle_mining_words(callback_query: CallbackQuery):
-    cursor = mining_words_col.find({})
-    docs = await cursor.to_list(length=None)
-    words = sorted([doc["word"] for doc in docs])
+@router.callback_query(lambda c: c.data == "list_dictionary")
+async def list_dictionary_handler(callback_query: CallbackQuery):
+    keyboard = generate_alphabet_keyboard_for_collection("letter_")
+    keyboard.inline_keyboard.append([
+        InlineKeyboardButton(text="Назад ↩️", callback_data="back_to_categories")
+    ])
+    await callback_query.message.edit_text(
+        "📚 *Action Synonyms*\n\nВыберите букву:",
+        reply_markup=keyboard,
+        parse_mode="Markdown",
+    )
 
-    if words:
-        response = "📃 *Mining words:*\n\n" + "\n".join(f"🔹 {word}" for word in words)
-    else:
-        response = "⚠️ Категория mining words пуста."
 
-    await callback_query.message.edit_text(response, parse_mode="Markdown")
+
+@router.callback_query(lambda c: c.data == "list_mining")
+async def list_mining_handler(callback_query: CallbackQuery):
+    keyboard = generate_alphabet_keyboard_for_collection("mining_letter_")
+    keyboard.inline_keyboard.append([
+        InlineKeyboardButton(text="Назад ↩️", callback_data="back_to_categories")
+    ])
+    await callback_query.message.edit_text(
+        "📚 *Technical Mining Thesaurus*\n\nВыберите букву:",
+        reply_markup=keyboard,
+        parse_mode="Markdown",
+    )
+
+@router.callback_query(lambda c: c.data == "back_to_categories")
+async def back_to_categories(callback_query: CallbackQuery):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Action Synonyms", callback_data="list_dictionary")
+    builder.button(text="Technical Mining Thesaurus", callback_data="list_mining")
+    keyboard = builder.as_markup()
+    await callback_query.message.edit_text("📚 Выберите категорию:", reply_markup=keyboard)
+
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("letter_"))
@@ -216,21 +274,36 @@ async def handle_letter_selection(callback_query: CallbackQuery):
     cursor = dictionary_col.find({"word": {"$regex": f"^{letter}"}})
     docs = await cursor.to_list(length=None)
     words = sorted([doc["word"] for doc in docs])
-
     if words:
         response = f"📃 *Слова на букву {letter}:*\n\n" + "\n".join(
             f"🔹 {word}" for word in words
         )
     else:
         response = f"⚠️ На букву {letter} нет слов в словаре."
-
     await callback_query.message.edit_text(response, parse_mode="Markdown")
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("mining_letter_"))
+async def handle_mining_letter_selection(callback_query: CallbackQuery):
+    parts = callback_query.data.split("_")
+    letter = parts[2] if len(parts) > 2 else ""
+    cursor = mining_words_col.find({"word": {"$regex": f"^{letter}"}})
+    docs = await cursor.to_list(length=None)
+    words = sorted([doc["word"] for doc in docs])
+    if words:
+        response = f"📃 *Слова на букву {letter}:*\n\n" + "\n".join(
+            f"🔹 {word}" for word in words
+        )
+    else:
+        response = f"⚠️ На букву {letter} нет слов в техничес майнинговом тезаурусе."
+    await callback_query.message.edit_text(response, parse_mode="Markdown")
+# ===== Конец изменений для команды /list =====
 
 
 @router.message(Command("random_word"))
 async def cmd_random_word(message: Message):
-    # Используем агрегацию для получения случайного документа
-    docs = await dictionary_col.aggregate([{"$sample": {"size": 1}}]).to_list(length=1)
+    # Используем агрегацию для получения случайного документа из коллекции random_words
+    docs = await all_words_col.aggregate([{"$sample": {"size": 1}}]).to_list(length=1)
     if not docs:
         await message.answer(
             "⚠️ Словарь пуст. Добавьте слова с помощью команды `/add_word`."
@@ -302,7 +375,7 @@ async def start_flashcards(message: Message, state: FSMContext):
         except Exception:
             pass
 
-    docs = await dictionary_col.find({}).to_list(length=None)
+    docs = await all_words_col.find({}).to_list(length=None)
     if not docs:
         await message.answer(
             "⚠️ Словарь пуст. Добавьте слова с помощью команды `/add_word`."
@@ -314,7 +387,7 @@ async def start_flashcards(message: Message, state: FSMContext):
     current_index = 0
     await state.update_data(words=words, current_index=current_index)
 
-    doc = await dictionary_col.find_one({"word": words[current_index]})
+    doc = await all_words_col.find_one({"word": words[current_index]})
     response = generate_flashcard(
         doc["word"], doc.get("synonyms", []), doc.get("ru", ""), doc.get("kz", "")
     )
@@ -334,7 +407,7 @@ async def next_word(callback_query: CallbackQuery, state: FSMContext):
     current_index = (current_index + 1) % len(words)
     await state.update_data(current_index=current_index)
 
-    doc = await dictionary_col.find_one({"word": words[current_index]})
+    doc = await all_words_col.find_one({"word": words[current_index]})
     response = generate_flashcard(
         doc["word"], doc.get("synonyms", []), doc.get("ru", ""), doc.get("kz", "")
     )
@@ -356,7 +429,7 @@ async def previous_word(callback_query: CallbackQuery, state: FSMContext):
     current_index = (current_index - 1) % len(words)
     await state.update_data(current_index=current_index)
 
-    doc = await dictionary_col.find_one({"word": words[current_index]})
+    doc = await all_words_col.find_one({"word": words[current_index]})
     response = generate_flashcard(
         doc["word"], doc.get("synonyms", []), doc.get("ru", ""), doc.get("kz", "")
     )
@@ -597,7 +670,7 @@ async def handle_word(message: Message):
     word = message.text.strip()
     # Формируем регулярное выражение для точного совпадения, игнорируя регистр
     regex = f"^{re.escape(word)}$"
-    doc = await dictionary_col.find_one({"word": {"$regex": regex, "$options": "i"}})
+    doc = await all_words_col.find_one({"word": {"$regex": regex, "$options": "i"}})
 
     if doc:
         synonyms = doc.get("synonyms", [])
@@ -611,7 +684,7 @@ async def handle_word(message: Message):
             f"🔸 *На казахском*: {kz}"
         )
     else:
-        words_list = await dictionary_col.distinct("word")
+        words_list = await all_words_col.distinct("word")
         closest_matches = process.extract(word, words_list, limit=3)
         suggestions = "\n".join([f"🔹 {match[0]}" for match in closest_matches])
         response = (

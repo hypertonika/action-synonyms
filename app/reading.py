@@ -118,7 +118,7 @@ def render_vocab_image(vocab: list) -> bytes:
         font_title = ImageFont.load_default()
         font_body  = ImageFont.load_default()
 
-    title = "Vocabulary: Mining and Sediments"
+    title = "Vocabulary:"
     # подготовим строки
     lines = [title, ""]
     for i, it in enumerate(vocab, 1):
@@ -239,7 +239,7 @@ async def send_stage(cb: CallbackQuery, doc: dict, idx: int, state: FSMContext):
         left = "\n".join([f"{i+1}) {w}" for i,w in enumerate(doc["task1_match"]["left"])])
         right = "\n".join([f"{k}) {v}" for k,v in doc["task1_match"]["right"].items()])
         body = ("🧩 *Task 1. Match the words with their definitions.*\n"
-                "Отправьте ответ одной строкой: `1-d, 2-e, 3-h, ...`\n\n"
+                "Отправьте ответ одной строкой: `1-a, 2-b, 3-c, ...`\n\n"
                 f"Список:\n{left}\n\nОпции:\n{right}")
         await ensure_stage_msg(cb, state, text=body, kb=kb, parse_mode="Markdown")
         await cb.answer(); return
@@ -248,8 +248,8 @@ async def send_stage(cb: CallbackQuery, doc: dict, idx: int, state: FSMContext):
         bank = ", ".join(doc["task2_fill"]["word_bank"])
         items = "\n".join([f"{it['n']}) {it['text']}" for it in doc["task2_fill"]["items"]])
         body = ("✏️ *Task 2. Fill in the blanks with the correct word.*\n"
-                f"Словарик: {bank}\n\n{items}\n\n"
-                "Ответ: слова через запятую по порядку (например: `mining, sediment, ...`).")
+                f"Слова: {bank}\n\n{items}\n\n"
+                "Ответ: слова через запятую по порядку (например: `example, action, synonyms, ...`).")
         await ensure_stage_msg(cb, state, text=body, kb=kb, parse_mode="Markdown")
         await cb.answer(); return
 

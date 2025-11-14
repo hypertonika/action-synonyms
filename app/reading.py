@@ -26,7 +26,7 @@ class ReadingFlow(StatesGroup):
 class ReadingQuiz(StatesGroup):
     current = State()
 
-STAGES = ["vocab", "text", "discussion", "quiz", "task1", "task2", "task3"]
+STAGES = ["vocab", "text", "discussion", "task1", "task2", "task3", "quiz"]
 
 # ===== font loader =====
 def _first_existing(paths):
@@ -254,10 +254,26 @@ async def send_stage(cb: CallbackQuery, doc: dict, idx: int, state: FSMContext):
         await cb.answer(); return
 
     if stage == "task3":
-        pts = "\n".join([f"{i+1}. {q}" for i,q in enumerate(doc["task3_discussion"])])
-        await ensure_stage_msg(cb, state, text=f"🗣️ *Task 3. Discussion (pair work):*\n\n{pts}",
-                               kb=kb, parse_mode="Markdown")
-        await cb.answer(); return
+        items = doc.get("task3_discussion", [])
+    # по умолчанию – нумеровать (как сейчас), но можно отключить в документе
+        numbered = doc.get("task3_numbered", True)
+        if numbered:
+            body = "\n".join(f"{i+1}. {it}" for i, it in enumerate(items))
+        else:
+            body = "\n".join(items)
+
+        title = doc.get("task3_title", "Task 3. Discussion (pair work)")
+
+        await ensure_stage_msg(
+            cb,
+            state,
+            text=f"🗣️ *{title}*\n\n{body}",
+            kb=kb,
+            parse_mode="Markdown",
+        )
+        await cb.answer()
+        return
+
 
 # ===== quiz flow =====
 def quiz_kb(idx: int) -> InlineKeyboardMarkup:
@@ -324,10 +340,23 @@ async def reading_quiz_answer(cb: CallbackQuery, state: FSMContext):
         except Exception: pass
 
     data = await state.get_data()
-    slug = data.get("reading_slug"); stage_idx = data.get("stage_idx", 0)
-    await ensure_stage_msg(cb, state, text="Квиз завершён. Нажмите «Далее ➡️», чтобы продолжить.",
-                           kb=nav_kb(stage_idx, slug))
+    slug = data.get("reading_slug")
+    stage_idx = data.get("stage_idx", 0)
+
+    # если квиз — последний этап, подсказываем вернуться к списку уроков
+    if stage_idx >= len(STAGES) - 1:
+        end_text = "Квиз завершён. Нажмите «📚 К списку уроков», чтобы выбрать следующий урок."
+    else:
+        end_text = "Квиз завершён. Нажмите «Далее ➡️», чтобы продолжить."
+
+    await ensure_stage_msg(
+        cb,
+        state,
+        text=end_text,
+        kb=nav_kb(stage_idx, slug)
+    )
     await state.set_state(ReadingFlow.in_lesson)
+
 
 # ===== inputs for task1/task2 =====
 @router_reading.message(ReadingFlow.in_lesson)

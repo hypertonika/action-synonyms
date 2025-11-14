@@ -658,7 +658,24 @@ async def exit_quiz(callback_query: CallbackQuery, state: FSMContext):
             "❌ Квиз не активен, нет операции для отмены."
         )
 
+@router.message(F.audio)
+async def debug_audio_id(message: Message):
+    audio = message.audio
+    print("AUDIO file_id:", audio.file_id)
+    await message.answer(
+        f"🎧 audio.file_id:\n<code>{audio.file_id}</code>",
+        parse_mode="HTML"
+    )
 
+@router.message(F.voice)
+async def debug_voice_id(message: Message):
+    voice = message.voice
+    print("VOICE file_id:", voice.file_id)
+    await message.answer(
+        f"🎙 voice.file_id:\n<code>{voice.file_id}</code>",
+        parse_mode="HTML"
+    )
+    
 @router.message()
 async def handle_word(message: Message):
     # Берем исходное слово без изменения регистра

@@ -68,9 +68,12 @@ async def cmd_help(message: Message):
         "5. Используйте `/start_quiz`, чтобы проверить свои знания с помощью викторины.\n"
         "6. Используйте `/reading`, чтобы открыть раздел чтения: словарь по теме, текст, обсуждение и квиз.\n"
         "   — Внутри раздела навигируйте кнопками *Назад* и *Далее*;\n"
-        "   — В заданиях отправляйте ответы прямо сообщением (для Task 1/2 есть инструкции в тексте);\n"
+        "   — В заданиях отправляйте ответы прямо сообщением;\n"
         "   — Результаты квиза показываются во всплывающем окне.\n"
-        "7. Администраторы могут добавлять новые слова с помощью команды `/add_word`.\n\n"
+        "7. Используйте `/listening`, чтобы пройти уроки аудирования: прослушивание аудио, вопросы и задание fill-in-the-gaps.\n"
+        "   — Аудио отправляется как голосовое сообщение;\n"
+        "   — В fill-in-the-gaps отправляйте слова через запятую.\n"
+        "8. Администраторы могут добавлять новые слова с помощью команды `/add_word`.\n\n"
         "💡 В любой момент введите 'отмена', чтобы прервать текущую операцию.\n\n"
         "👨‍🏫 *Команды:*\n"
         "🔹 `/start` — начать работу с ботом\n"
@@ -80,7 +83,8 @@ async def cmd_help(message: Message):
         "🔹 `/random_word` — получить случайное слово\n"
         "🔹 `/flashcards` — режим обучения по карточкам\n"
         "🔹 `/start_quiz` — начать викторину\n"
-        "🔹 `/reading` — открыть уроки чтения (вокабуляр, текст, задания и квиз)",
+        "🔹 `/reading` — открыть уроки чтения\n"
+        "🔹 `/listening` — открыть уроки аудирования\n",
         parse_mode="Markdown",
     )
 
@@ -663,11 +667,14 @@ async def exit_quiz(callback_query: CallbackQuery, state: FSMContext):
             "❌ Квиз не активен, нет операции для отмены."
         )
 
-
-@router.message()
+    
+@router.message(F.text)   
 async def handle_word(message: Message):
-    # Берем исходное слово без изменения регистра
-    word = message.text.strip()
+    text = (message.text or "").strip()
+    if not text:
+        return
+
+    word = text
     # Формируем регулярное выражение для точного совпадения, игнорируя регистр
     regex = f"^{re.escape(word)}$"
     doc = await all_words_col.find_one({"word": {"$regex": regex, "$options": "i"}})
@@ -676,7 +683,6 @@ async def handle_word(message: Message):
         synonyms = doc.get("synonyms", [])
         ru = doc.get("ru", "")
         kz = doc.get("kz", "")
-        # Используем значение из базы, чтобы сохранить оригинальное форматирование
         response = (
             f"✨ *{doc['word']}*\n\n"
             f"🔹 *Синонимы*: {', '.join(synonyms)}\n"
@@ -694,3 +700,4 @@ async def handle_word(message: Message):
         )
 
     await message.answer(response, parse_mode="Markdown")
+

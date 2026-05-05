@@ -35,7 +35,250 @@ admins_col = db["admins"]
 router = Router()
 
 
+TEACHER_SECTION_TEXT = """<b>Для преподавателя</b>
+
+<b>Цель использования бота</b>
+Повышение лексической и цифровой компетенций студентов технических специальностей через интерактивную работу с профессиональной английской лексикой.
+
+<b>Как встроить бот в урок</b>
+1. Используйте бот как интерактивный словарь и тренажер по темам профессионального цикла.
+2. Включайте квизы, flashcards, Reading и Listening на этапах закрепления, рефлексии и самопроверки.
+3. Организуйте парную или групповую работу: студенты подбирают синонимы, объясняют термины и составляют мини-диалоги.
+4. Сочетайте бот с презентациями, Kahoot, LearningApps, Jamboard и другими цифровыми инструментами.
+
+<b>Самостоятельная работа</b>
+- Подготовка к тестам, зачетам, проектам и презентациям.
+- Задание-пример: пройти 2 квиза по теме и использовать 5 новых слов в мини-диалоге.
+- Тренировка перевода терминов, подбора синонимов и повторения тематической лексики.
+
+<b>Критерии оценивания</b>
+1. Профессиональная лексика: понимание и корректное употребление слов и синонимов - 0-3 балла.
+2. Активность: участие в квизах, flashcards и тестах - 0-3 балла.
+3. Самостоятельность: работа с ботом вне занятий - 0-2 балла.
+4. Цифровая грамотность: уверенная работа с Telegram-ботом и онлайн-платформами - 0-2 балла.
+5. Результативность: средний процент правильных ответов выше 70% - 0-2 балла.
+
+<b>Итоговая шкала</b>
+10-12 баллов - высокий уровень.
+7-9 баллов - средний уровень.
+до 6 баллов - начальный уровень.
+
+<b>Методические рекомендации</b>
+- Бот можно использовать как основное средство изучения лексики или как дополнительный цифровой ресурс.
+- Лучше сочетать его с работой с текстом, устной практикой и письменными заданиями.
+- После работы с ботом полезно провести рефлексию: новые слова, трудности, примеры употребления.
+- Для мини-проектов можно дать задание: Create a presentation using 10 synonyms from the Mining topic.
+
+<b>Часто задаваемые вопросы</b>
+<b>Вопрос:</b> Можно ли использовать бот, если в группе студенты с разным уровнем английского?
+<b>Ответ:</b> Да. Бот содержит лексику уровня A2-B1. Можно давать разные задания: слабым студентам - перевод и простые тесты, сильным - подбор синонимов в контексте и эссе.
+
+<b>Вопрос:</b> Как отследить прогресс студентов, если бот не сохраняет историю?
+<b>Ответ:</b> Поощряйте студентов делать скриншоты результатов тестов и отправлять вам. Также можно использовать Google Forms для фиксации баллов.
+
+<b>Вопрос:</b> Нужно ли специальное обучение для работы с ботом?
+<b>Ответ:</b> Нет, интерфейс интуитивно понятен. Достаточно один раз показать студентам, как найти модули и запустить тест.
+
+Полный список литературы и источников доступен в разделе <b>О боте</b>."""
+
+
+ABOUT_BOT_TEXT = """<b>О боте</b>
+
+Telegram-бот предназначен для изучения английской лексики, синонимов и профессиональных терминов технического и горного направлений. Он помогает работать со словарем, квизами, карточками, Reading и Listening-заданиями.
+
+<b>Источники и литература</b>
+1. Jenny Dooley, Bob Obee. <i>Action for Kazakhstan. Grade 11. Student's Book</i>. Express Publishing, 2020.
+2. Полякова Т.Ю., Синявская Е.В., Тынкова О.И., Улановская Э.С. <i>Английский язык для инженеров</i>. 6-е изд., испр. М.: Высшая школа, 2003. 463 с.
+3. Литвинов П.П. <i>Англо-русский и русско-английский синонимический словарь с тематической классификацией. Продвинутый английский через синонимию</i>. М.: Яхонт-А, 2002. 384 с. ISBN 5-901860-20-9.
+4. <i>Webster's Dictionary of Synonyms</i>. Springfield, Mass., 1951; 2nd ed., 1968.
+5. Агабекян И.П. <i>Английский язык для ССУЗов</i>. Москва, 2012.
+6. Хохряков В.С. <i>Открытая разработка месторождений полезных ископаемых</i>.
+7. Гарагуля С.И. <i>Английский язык для студентов строительных специальностей. Learning Building Construction in English</i>. Ростов н/Д: Феникс, 2011. 347 с.
+8. Ш. Әбдіраман. <i>Кенісі технологиясының негіздері</i>.
+9. Ә. Байбатина. <i>Пайдалы қазбалар</i>.
+10. Бонами Д. <i>Английский язык для технических училищ</i>. Предисл. В.Б. Григорова. М.: Высшая школа, 1989. 287 с.
+11. <i>Горное дело: Основные способы добычи угля и современное оборудование</i>. Пособие по английскому языку. Кемерово, 2009.
+12. Литвинов П.П. <i>Англо-русский и русско-английский синонимический словарь с тематической классификацией</i>. М.: Яхонт-А, 2002. 384 с."""
+
+
 # FSM для квиза
+TEACHER_MENU_TEXT = """<b>Методический раздел</b>
+
+Материалы для планирования урока, самостоятельной работы и оценки результатов.
+
+Выберите нужный блок:"""
+
+
+TEACHER_MENU_SECTIONS = {
+    "goals": """<b>Цели и задачи</b>
+
+<b>Общая цель</b>
+Повышение уровня лексической и цифровой компетенций студентов технических специальностей через интерактивный цифровой ресурс.
+
+<b>Конкретные цели</b>
+- формировать профессионально-ориентированный словарный запас;
+- развивать понимание английских синонимов, определений и терминов;
+- повышать мотивацию к изучению английского языка;
+- развивать самостоятельное обучение, самооценку и рефлексию;
+- формировать цифровую грамотность.
+
+<b>Задачи</b>
+- расширить активный и пассивный словарь студентов;
+- создать условия для интерактивного изучения лексики;
+- внедрить элементы геймификации: quiz, flashcards, mini-tests;
+- развивать командное взаимодействие;
+- интегрировать мобильные технологии в обучение.""",
+    "lesson": """<b>Интеграция бота в урок</b>
+
+<b>В учебном процессе</b>
+1. Используйте бот как интерактивный словарь и тренажер по профессиональным темам.
+2. Включайте квизы, подбор синонимов, Reading и Listening на этапах закрепления, рефлексии или самопроверки.
+3. Применяйте бот в парной и групповой работе для активизации устной речи.
+4. Сочетайте бот с презентациями, Jamboard, Kahoot, LearningApps и другими цифровыми средствами.
+
+<b>В самостоятельной работе</b>
+- рекомендуйте бот при подготовке к тестам, зачетам, проектам и презентациям;
+- давайте задания формата: "Пройди 2 квиза по теме и используй 5 новых слов в мини-диалоге";
+- используйте бот для тренировки перевода терминов, подбора синонимов и повторения тем.""",
+    "criteria": """<b>Критерии оценивания</b>
+
+<pre>
+1. Профессиональная лексика      0-3
+2. Активность в работе с ботом   0-3
+3. Самостоятельность             0-2
+4. Цифровая грамотность          0-2
+5. Результативность              0-2
+</pre>
+
+<b>Максимум:</b> 12 баллов.
+
+<b>Интерпретация результатов</b>
+10-12 баллов - высокий уровень.
+7-9 баллов - средний уровень.
+до 6 баллов - начальный уровень.
+
+<b>Показатель результативности</b>
+Средний процент правильных ответов выше 70%.""",
+    "method": """<b>Методические рекомендации</b>
+
+1. Бот может использоваться как основное средство изучения лексики или как дополнительный цифровой ресурс.
+2. Эффективен в рамках компетентностного подхода: студенты учатся применять иностранный язык в профессиональных ситуациях.
+3. Использование бота развивает функциональную грамотность, цифровые навыки и языковую самостоятельность.
+4. Рекомендуется сочетать бот с традиционными методами: работой с текстом, упражнениями и устной практикой.
+
+<b>Идея мини-проекта</b>
+Create a presentation using 10 synonyms from the Mining topic.""",
+    "faq": """<b>Часто задаваемые вопросы</b>
+
+<b>Можно ли использовать бот, если в группе студенты с разным уровнем английского?</b>
+Да. Бот содержит лексику уровня A2-B1. Слабым студентам можно давать перевод и простые тесты, сильным - подбор синонимов в контексте и эссе.
+
+<b>Как отследить прогресс студентов, если бот не сохраняет историю?</b>
+Поощряйте студентов делать скриншоты результатов тестов и отправлять вам. Также можно использовать Google Forms для фиксации баллов.
+
+<b>Нужно ли специальное обучение для работы с ботом?</b>
+Нет. Интерфейс интуитивно понятен. Достаточно один раз показать студентам, как найти модули и запустить тест.""",
+}
+
+
+ABOUT_MENU_TEXT = """<b>О боте</b>
+
+Action Synonyms Bot - учебный Telegram-бот для работы с английской лексикой, синонимами и профессиональными терминами технического и горного направлений.
+
+Выберите раздел:"""
+
+
+ABOUT_MENU_SECTIONS = {
+    "purpose": """<b>Назначение</b>
+
+Бот помогает студентам изучать и повторять английскую лексику через словарь, карточки, квизы, Reading и Listening-задания.
+
+<b>Основные возможности</b>
+- поиск перевода и синонимов;
+- работа с профессиональной терминологией;
+- тренировка через flashcards;
+- проверка знаний в quiz-формате;
+- развитие навыков чтения и аудирования.""",
+    "base": """<b>Учебная и методическая база</b>
+
+Содержание бота опирается на учебники английского языка, словари синонимов и литературу по техническим и горным специальностям.
+
+<b>Направления материалов</b>
+- общий английский и школьный курс Grade 11;
+- английский язык для инженеров и студентов технических специальностей;
+- синонимия и тематическая классификация лексики;
+- терминология горного дела, строительства и полезных ископаемых.""",
+    "sources": """<b>Источники и литература</b>
+
+1. Jenny Dooley, Bob Obee. <i>Action for Kazakhstan. Grade 11. Student's Book</i>. Express Publishing, 2020.
+2. Полякова Т.Ю., Синявская Е.В., Тынкова О.И., Улановская Э.С. <i>Английский язык для инженеров</i>. М.: Высшая школа, 2003.
+3. Литвинов П.П. <i>Англо-русский и русско-английский синонимический словарь с тематической классификацией</i>. М.: Яхонт-А, 2002.
+4. <i>Webster's Dictionary of Synonyms</i>. Springfield, Mass., 1951; 2nd ed., 1968.
+5. Агабекян И.П. <i>Английский язык для ССУЗов</i>. Москва, 2012.
+6. Хохряков В.С. <i>Открытая разработка месторождений полезных ископаемых</i>.
+7. Гарагуля С.И. <i>Learning Building Construction in English</i>. Ростов н/Д: Феникс, 2011.
+8. Ш. Әбдіраман. <i>Кенісі технологиясының негіздері</i>.
+9. Ә. Байбатина. <i>Пайдалы қазбалар</i>.
+10. Бонами Д. <i>Английский язык для технических училищ</i>. М.: Высшая школа, 1989.
+11. <i>Горное дело: Основные способы добычи угля и современное оборудование</i>. Кемерово, 2009.
+12. Литвинов П.П. <i>Англо-русский и русско-английский синонимический словарь с тематической классификацией</i>. М.: Яхонт-А, 2002.""",
+}
+
+
+def teacher_menu_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎯 Цели и задачи", callback_data="teacher:goals")],
+        [InlineKeyboardButton(text="📚 Интеграция в урок", callback_data="teacher:lesson")],
+        [InlineKeyboardButton(text="🧾 Критерии оценивания", callback_data="teacher:criteria")],
+        [InlineKeyboardButton(text="🧭 Методические рекомендации", callback_data="teacher:method")],
+        [InlineKeyboardButton(text="❓ FAQ", callback_data="teacher:faq")],
+    ])
+
+
+def teacher_back_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Назад к разделам", callback_data="teacher:menu")]
+    ])
+
+
+def about_menu_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="ℹ️ Назначение", callback_data="about:purpose")],
+        [InlineKeyboardButton(text="📘 Учебная база", callback_data="about:base")],
+        [InlineKeyboardButton(text="📚 Источники и литература", callback_data="about:sources")],
+    ])
+
+
+def about_back_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Назад к разделам", callback_data="about:menu")]
+    ])
+
+
+TEACHER_CARD_TITLES = {
+    "goals": "🎯 Цели и задачи",
+    "lesson": "📚 Интеграция в урок",
+    "criteria": "🧾 Критерии оценивания",
+    "method": "🧭 Методические рекомендации",
+    "faq": "❓ FAQ",
+}
+
+
+ABOUT_CARD_TITLES = {
+    "purpose": "ℹ️ Назначение",
+    "base": "📘 Учебная база",
+    "sources": "📚 Источники и литература",
+}
+
+
+def context_text(section_group: str, section_title: str, body: str) -> str:
+    body = re.sub(r"^<b>[^<]+</b>\n\n", "", body, count=1)
+    return (
+        f"{section_group} → {section_title}\n\n"
+        f"{body}"
+    )
+
+
 class QuizState(StatesGroup):
     waiting_for_answer = State()
     quiz_data = State()
@@ -90,6 +333,86 @@ async def cmd_help(message: Message):
 
 
 # FSM для добавления нового слова
+@router.message(Command("teacher"))
+@router.message(F.text == "Для преподавателя")
+async def teacher_section(message: Message):
+    await message.answer(
+        TEACHER_MENU_TEXT,
+        parse_mode="HTML",
+        reply_markup=teacher_menu_keyboard(),
+    )
+
+
+@router.message(Command("about"))
+@router.message(F.text == "О боте")
+async def about_bot(message: Message):
+    await message.answer(
+        ABOUT_MENU_TEXT,
+        parse_mode="HTML",
+        reply_markup=about_menu_keyboard(),
+    )
+
+
+@router.callback_query(F.data == "teacher:menu")
+async def teacher_menu(callback_query: CallbackQuery):
+    await callback_query.message.edit_text(
+        TEACHER_MENU_TEXT,
+        parse_mode="HTML",
+        reply_markup=teacher_menu_keyboard(),
+    )
+    await callback_query.answer()
+
+
+@router.callback_query(F.data.startswith("teacher:"))
+async def teacher_menu_section(callback_query: CallbackQuery):
+    section = callback_query.data.split(":", 1)[1]
+    text = TEACHER_MENU_SECTIONS.get(section)
+    if not text:
+        await callback_query.answer("Раздел не найден", show_alert=True)
+        return
+
+    await callback_query.message.edit_text(
+        context_text(
+            "👩‍🏫 Методический раздел",
+            TEACHER_CARD_TITLES.get(section, "Раздел"),
+            text,
+        ),
+        parse_mode="HTML",
+        reply_markup=teacher_back_keyboard(),
+    )
+    await callback_query.answer()
+
+
+@router.callback_query(F.data == "about:menu")
+async def about_menu(callback_query: CallbackQuery):
+    await callback_query.message.edit_text(
+        ABOUT_MENU_TEXT,
+        parse_mode="HTML",
+        reply_markup=about_menu_keyboard(),
+    )
+    await callback_query.answer()
+
+
+@router.callback_query(F.data.startswith("about:"))
+async def about_menu_section(callback_query: CallbackQuery):
+    section = callback_query.data.split(":", 1)[1]
+    text = ABOUT_MENU_SECTIONS.get(section)
+    if not text:
+        await callback_query.answer("Раздел не найден", show_alert=True)
+        return
+
+    await callback_query.message.edit_text(
+        context_text(
+            "ℹ️ О боте",
+            ABOUT_CARD_TITLES.get(section, "Раздел"),
+            text,
+        ),
+        parse_mode="HTML",
+        reply_markup=about_back_keyboard(),
+    )
+    await callback_query.answer()
+
+
 class AddWord(StatesGroup):
     waiting_for_category = State()  
     waiting_for_word = State()
@@ -122,8 +445,8 @@ async def start_add_word(message: Message, state: FSMContext):
 
     # Запрашиваем выбор категории
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Action Synonyms", callback_data="cat_dictionary")],
-        [InlineKeyboardButton(text="Technical Mining Thesaurus", callback_data="cat_mining")]
+        [InlineKeyboardButton(text="General English", callback_data="cat_dictionary")],
+        [InlineKeyboardButton(text="Technical Thesaurus", callback_data="cat_mining")]
     ])
     await message.answer("Выберите категорию для добавления слова:", reply_markup=keyboard)
     await state.set_state(AddWord.waiting_for_category)
@@ -221,8 +544,8 @@ async def confirm_addition(callback_query: CallbackQuery, state: FSMContext):
 @router.message(Command("list"))
 async def cmd_list(message: Message):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Action Synonyms", callback_data="list_dictionary")
-    builder.button(text="Technical Mining Thesaurus", callback_data="list_mining")
+    builder.button(text="General English", callback_data="list_dictionary")
+    builder.button(text="Technical Thesaurus", callback_data="list_mining")
     keyboard = builder.as_markup()
     await message.answer("📚 Выберите категорию:", reply_markup=keyboard)
 
@@ -243,7 +566,7 @@ async def list_dictionary_handler(callback_query: CallbackQuery):
         InlineKeyboardButton(text="Назад ↩️", callback_data="back_to_categories")
     ])
     await callback_query.message.edit_text(
-        "📚 *Action Synonyms*\n\nВыберите букву:",
+        "📚 *General English*\n\nВыберите букву:",
         reply_markup=keyboard,
         parse_mode="Markdown",
     )
@@ -257,7 +580,7 @@ async def list_mining_handler(callback_query: CallbackQuery):
         InlineKeyboardButton(text="Назад ↩️", callback_data="back_to_categories")
     ])
     await callback_query.message.edit_text(
-        "📚 *Technical Mining Thesaurus*\n\nВыберите букву:",
+        "📚 *Technical Thesaurus*\n\nВыберите букву:",
         reply_markup=keyboard,
         parse_mode="Markdown",
     )
@@ -265,8 +588,8 @@ async def list_mining_handler(callback_query: CallbackQuery):
 @router.callback_query(lambda c: c.data == "back_to_categories")
 async def back_to_categories(callback_query: CallbackQuery):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Action Synonyms", callback_data="list_dictionary")
-    builder.button(text="Technical Mining Thesaurus", callback_data="list_mining")
+    builder.button(text="General English", callback_data="list_dictionary")
+    builder.button(text="Technical Thesaurus", callback_data="list_mining")
     keyboard = builder.as_markup()
     await callback_query.message.edit_text("📚 Выберите категорию:", reply_markup=keyboard)
 

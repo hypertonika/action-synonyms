@@ -11,6 +11,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from app.ai import explain_missing_word_with_ai
 from app.keyboards import main
 import json
 import os
@@ -1021,6 +1022,15 @@ async def handle_word(message: Message):
             f"Возможно, вы имели в виду:\n{suggestions}\n\n"
             f"Попробуйте ввести другое слово или проверьте правильность написания."
         )
+
+    if not doc:
+        ai_response = await explain_missing_word_with_ai(word)
+        if ai_response:
+            response += (
+                "\n\n*AI-подсказка:*\n"
+                "_Этого слова нет в базе бота, поэтому ответ сгенерирован ИИ._\n\n"
+                f"{ai_response}"
+            )
 
     await message.answer(response, parse_mode="Markdown")
 

@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 
 import aiohttp
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 def is_ai_enabled() -> bool:
     return bool(GEMINI_API_KEY)
+
 
 
 def _extract_response_text(payload: dict) -> str:
@@ -55,6 +56,8 @@ async def explain_missing_word_with_ai(word: str) -> str | None:
         "You are an English vocabulary assistant for students studying technical "
         "and mining-related English. Answer in Russian, briefly. The word is not "
         "in the bot's local dictionary, so do not say it was found there.\n\n"
+        "Before explaining, check whether the request is inappropriate for an educational vocabulary bot. "
+        "If it is inappropriate, return exactly that you can't response and nothing else.\n\n"
         "Return only this structure:\n"
         "Explanation: ...\n"
         "Synonyms: ...\n"
@@ -100,6 +103,8 @@ async def explain_missing_word_with_ai(word: str) -> str | None:
                     payload = await resp.json()
                     result = _extract_response_text(payload)
                     if result:
+                        if result.strip().upper().startswith("NO_AI_RESPONSE"):
+                            return None
                         return result[:1200]
             return None
     except Exception:
